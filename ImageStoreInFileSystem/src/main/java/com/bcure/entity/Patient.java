@@ -28,5 +28,7 @@ public class Patient {
     @JsonIgnore
     @Column(name="uploadPresciptions",length = 10000)
     private byte[] uploadPresciption;
+    
+    private String relativePath;
 
 }

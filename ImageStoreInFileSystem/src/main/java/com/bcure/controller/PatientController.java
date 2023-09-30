@@ -2,9 +2,14 @@ package com.bcure.controller;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.LocalDate;
+import java.util.Date;
+import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -37,14 +42,13 @@ public class PatientController {
 
 	@Value(value = "${project.image}")
 	private String path;
-	
-	
 
-	@PostMapping(value="/stores")
-	public ResponseEntity<FileResponse> imageStore(
-			@RequestPart("uploadPresciption") MultipartFile uploadPresciption,
-	        @RequestPart String name,
-	        @RequestPart String[] symptoms,@RequestPart Integer age,@RequestPart String gender,@RequestPart String[] disEase){
+	@PostMapping(value = "/stores")
+	public ResponseEntity<FileResponse> imageStore(@RequestPart("uploadPresciption") MultipartFile uploadPresciption,
+			@RequestPart String name, @RequestPart String[] symptoms, @RequestPart Integer age,
+			@RequestPart String gender, @RequestPart String[] disEase) {
+		
+		
 
 		String fileName = null;
 		try {
@@ -54,17 +58,19 @@ public class PatientController {
 			System.out.println(contentType);
 			
 			
-			Patient patient =new Patient();
-			
+
+			Patient patient = new Patient();
+
 			patient.setUploadPresciption(bytes);
 			patient.setAge(age);
 			patient.setSymptoms(symptoms);
 			patient.setGender(gender);
 			patient.setName(name);
 			patient.setDisEase(disEase);
-			
-					Patient save = patientRepository.save(patient);
-			
+			patient.setRelativePath(uploadPresciption.getOriginalFilename()+"_"+LocalDate.now());
+
+			Patient save = patientRepository.save(patient);
+
 		} catch (IOException e) {
 			e.printStackTrace();
 			return new ResponseEntity<>(new FileResponse(null, "Image is not stored.."),
@@ -75,15 +81,51 @@ public class PatientController {
 
 	}
 
-	@GetMapping(value = "/view/{imageName}", produces = MediaType.IMAGE_JPEG_VALUE)
-	public void viewImage(@PathVariable("imageName") String imageName, HttpServletResponse response)
+	@GetMapping(value = "/view/{relativePath}", produces = MediaType.IMAGE_JPEG_VALUE)
+	public void viewImage(@PathVariable("relativePath") String relativePath, HttpServletResponse response)
 			throws IOException {
+		
+		
 
-		InputStream resource = patientService.getImage(path, imageName);
+		InputStream resource = patientService.getImage(path, relativePath);
 		response.setContentType(MediaType.IMAGE_JPEG_VALUE);
 
 		StreamUtils.copy(resource, response.getOutputStream());
 
+	}
+	
+	 @GetMapping(value = "/views/{relativePath}", produces = MediaType.IMAGE_JPEG_VALUE)
+	    public ResponseEntity<Resource> viewImage(@PathVariable("relativePath") String relativePath) {
+	        InputStream imageStream = patientService.getImageByRelativePath(relativePath);
+
+	        if (imageStream != null) {
+	            // Create an InputStreamResource from the image data
+	            Resource resource = new InputStreamResource(imageStream);
+
+	            // Return the image as a ResponseEntity
+	            return ResponseEntity.ok()
+		                .contentType(MediaType.IMAGE_JPEG)
+		                .body(resource);
+	        } else {
+	            // Handle the case where the image is not found
+	            return ResponseEntity.notFound().build();
+	        }
+	    }
+	
+	
+
+
+
+
+
+
+	@GetMapping("/getAll")
+	public ResponseEntity<List<Patient>> getAllPatient() {
+		
+		List<Patient> allPatient = patientService.getAllPatient();
+		
+		return new ResponseEntity<List<Patient>>(allPatient, HttpStatus.OK);
+		
 	}
 
 }
